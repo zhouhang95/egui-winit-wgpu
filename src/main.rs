@@ -1,7 +1,6 @@
 use std::iter;
 
-use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
-use epi::*;
+use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
 use winit::event::Event::*;
 use winit::event_loop::ControlFlow;
 const INITIAL_WIDTH: u32 = 960;
@@ -102,13 +101,19 @@ fn main() {
 
                 // Upload all resources for the GPU.
                 let screen_descriptor = ScreenDescriptor {
-                    physical_width: surface_config.width,
-                    physical_height: surface_config.height,
-                    scale_factor: window.scale_factor() as f32,
+                    size_in_pixels: [
+                        surface_config.width,
+                        surface_config.height,
+                    ],
+                    pixels_per_point: window.scale_factor() as f32,
                 };
 
-                egui_rpass.add_textures(&device, &queue, &output.textures_delta).unwrap();
-                egui_rpass.remove_textures(output.textures_delta).unwrap();
+                for (id, image_delta) in &output.textures_delta.set {
+                    egui_rpass.update_texture(&device, &queue, *id, image_delta);
+                }
+                for id in &output.textures_delta.free {
+                    egui_rpass.free_texture(id);
+                }
                 egui_rpass.update_buffers(&device, &queue, &paint_jobs, &screen_descriptor);
 
                 // Record all render passes.
@@ -119,20 +124,12 @@ fn main() {
                         &paint_jobs,
                         &screen_descriptor,
                         Some(wgpu::Color::BLACK),
-                    )
-                    .unwrap();
+                    );
                 // Submit the commands.
                 queue.submit(iter::once(encoder.finish()));
 
                 // Redraw egui
                 output_frame.present();
-
-                // Suppport reactive on windows only, but not on linux.
-                // if _output.needs_repaint {
-                //     *control_flow = ControlFlow::Poll;
-                // } else {
-                //     *control_flow = ControlFlow::Wait;
-                // }
             }
             MainEventsCleared => {
                 window.request_redraw();
