@@ -1,32 +1,15 @@
 use std::iter;
-use std::time::Instant;
 
-use chrono::Timelike;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use epi::*;
 use winit::event::Event::*;
 use winit::event_loop::ControlFlow;
-const INITIAL_WIDTH: u32 = 1920;
-const INITIAL_HEIGHT: u32 = 1080;
-
-/// A custom event type for the winit app.
-enum Event {
-    RequestRedraw,
-}
-
-/// This is the repaint signal type that egui needs for requesting a repaint from another thread.
-/// It sends the custom RequestRedraw event to the winit event loop.
-struct ExampleRepaintSignal(std::sync::Mutex<winit::event_loop::EventLoopProxy<Event>>);
-
-impl epi::backend::RepaintSignal for ExampleRepaintSignal {
-    fn request_repaint(&self) {
-        self.0.lock().unwrap().send_event(Event::RequestRedraw).ok();
-    }
-}
+const INITIAL_WIDTH: u32 = 960;
+const INITIAL_HEIGHT: u32 = 540;
 
 /// A simple egui + wgpu + winit based example.
 fn main() {
-    let event_loop = winit::event_loop::EventLoop::with_user_event();
+    let event_loop = winit::event_loop::EventLoop::new();
     let window = winit::window::WindowBuilder::new()
         .with_decorations(true)
         .with_resizable(true)
@@ -71,10 +54,6 @@ fn main() {
     };
     surface.configure(&device, &surface_config);
 
-    let repaint_signal = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
-        event_loop.create_proxy(),
-    )));
-
     // We use the egui_winit_platform crate as the platform.
     let mut state = egui_winit::State::new(4096, &window);
     let context = egui::Context::default();
@@ -83,9 +62,8 @@ fn main() {
     let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
 
     // Display the demo application that ships with egui.
-    let mut demo_app = egui_demo_lib::WrapApp::default();
+    let mut demo_app = egui_demo_lib::DemoWindows::default();
 
-    let mut previous_frame_time = None;
     event_loop.run(move |event, _, control_flow| {
 
         match event {
@@ -108,32 +86,15 @@ fn main() {
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
                 // Begin to draw the UI frame.
-                let egui_start = Instant::now();
                 let input = state.take_egui_input(&window);
                 context.begin_frame(input);
-                let app_output = epi::backend::AppOutput::default();
-
-                let frame =  epi::Frame::new(epi::backend::FrameData {
-                    info: epi::IntegrationInfo {
-                        name: "egui_example",
-                        web_info: None,
-                        cpu_usage: previous_frame_time,
-                        native_pixels_per_point: Some(window.scale_factor() as _),
-                        prefer_dark_mode: None,
-                    },
-                    output: app_output,
-                    repaint_signal: repaint_signal.clone(),
-                });
 
                 // Draw the demo application.
-                demo_app.update(&context, &frame);
+                demo_app.ui(&context);
 
                 // End the UI frame. We could now handle the output and draw the UI with the backend.
                 let output = context.end_frame();
                 let paint_jobs = context.tessellate(output.shapes);
-
-                let frame_time = (Instant::now() - egui_start).as_secs_f64() as f32;
-                previous_frame_time = Some(frame_time);
 
                 let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("encoder"),
@@ -173,7 +134,7 @@ fn main() {
                 //     *control_flow = ControlFlow::Wait;
                 // }
             }
-            MainEventsCleared | UserEvent(Event::RequestRedraw) => {
+            MainEventsCleared => {
                 window.request_redraw();
             }
             WindowEvent { event, .. } => match event {
@@ -198,10 +159,4 @@ fn main() {
             _ => (),
         }
     });
-}
-
-/// Time of day as seconds since midnight. Used for clock in demo app.
-pub fn seconds_since_midnight() -> f64 {
-    let time = chrono::Local::now().time();
-    time.num_seconds_from_midnight() as f64 + 1e-9 * (time.nanosecond() as f64)
 }

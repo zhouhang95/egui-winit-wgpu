@@ -9,7 +9,6 @@ resolver = "2"
 
 [dependencies]
 egui_wgpu_backend = "0.17"
-chrono = "0.4"
 pollster = "0.2"
 egui = "0.17"
 epi = "0.17"
