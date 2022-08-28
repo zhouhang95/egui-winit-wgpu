@@ -1,22 +1,23 @@
 [package]
 name = "egui_example"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Nils Hasenbanck <nils@hasenbanck.de>"]
-edition = "2018"
-
-# WGPU requires cargo resolver v2
-resolver = "2"
+edition = "2021"
 
 [dependencies]
-egui-wgpu = "0.18"
+egui-wgpu = "0.19"
 pollster = "0.2"
-egui = "0.18"
-egui-winit = "0.18"
-wgpu = "0.12"
-winit = "0.26"
-egui_demo_lib = "0.18"
+egui = "0.19"
+wgpu = "0.13"
+winit = "0.27"
+egui_demo_lib = "0.19"
 
-[patch.crates-io]
-# egui = { version = "0.5", git = "https://github.com/emilk/egui" }
-# egui_wgpu_backend = { path = "../egui_wgpu_backend" }
-# egui_winit_platform = { path = "../egui_winit_platform" }
+[dependencies.egui-winit]
+version = "0.19"
+# Required for compiling to WASM
+default-features = false
+
+# Required for compiling to WASM
+# Note that you also need RUSTFLAGS=--cfg=web_sys_unstable_apis
+[dependencies.getrandom]
+features = ["js"]
