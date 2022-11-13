@@ -43,7 +43,8 @@ fn main() {
     .unwrap();
 
     let size = window.inner_size();
-    let surface_format = surface.get_preferred_format(&adapter).unwrap();
+    let supported_formats = surface.get_supported_formats(&adapter);
+    let surface_format = supported_formats[0];
     let mut surface_config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format: surface_format,
@@ -53,11 +54,9 @@ fn main() {
     };
     surface.configure(&device, &surface_config);
 
-    // We use the egui_winit_platform crate as the platform.
-    let mut state = egui_winit::State::new(4096, &window);
+    let mut state = egui_winit::State::new(&event_loop);
     let context = egui::Context::default();
 
-    // We use the egui_wgpu_backend crate as the render backend.
     let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
 
     // Display the demo application that ships with egui.
@@ -157,3 +156,4 @@ fn main() {
         }
     });
 }
+
